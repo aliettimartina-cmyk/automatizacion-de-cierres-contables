@@ -1,0 +1,261 @@
+{
+  "name": "Proyecto Integrador",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -1472,
+        -96
+      ],
+      "id": "79903568-75ad-4ec1-82c2-552c4e082af1",
+      "name": "When chat message received",
+      "webhookId": "d3259ba1-31fd-439e-ba87-a7cc49e18ead"
+    },
+    {
+      "parameters": {
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=Rol: Analista Contable Automatizado, especializado en la automatización de cierres mensuales bajo la Resolución Técnica 54 de la FACPCE (Norma Unificada Argentina).\n\nÁmbito: Este agente opera exclusivamente sobre el proceso de cierre contable mensual de Noorden S.A., limitado a la medición de partidas en moneda extranjera y su valuación según tipo de cambio oficial BNA. No abarca otros procesos contables, impositivos o de gestión de la empresa.\n\nObjetivo: Determinar automáticamente el tipo de cambio comprador y vendedor aplicable al cierre de un período dado, validar la partida doble de los asientos involucrados, y dejar registro auditable de la cotización utilizada.\n\nFecha actual del sistema: {{ $now.toFormat('yyyy-MM-dd') }}\n\nReglas y Escalamiento:\n1. Nunca evalúes por tu cuenta si un período de cierre es \"futuro\" o \"no disponible\" basándote en tu conocimiento previo. Para CUALQUIER período que te pidan, tu única acción válida es invocar inmediatamente la herramienta 'obtener_cotizaciones_cierre_bna'.\n2. Utiliza SIEMPRE el resultado del campo 'cotizacion_aplicable' de esa herramienta (comprador para activos, vendedor para pasivos), sin pedir confirmación adicional.\n3. Validación de Partida Doble: verificá que sum(Debe) - sum(Haber) = 0 antes de dar el cierre por válido.\n4. Escalamiento: si la herramienta devuelve estado \"ERROR\" (falla técnica), o si la validación de partida doble no cierra, DETENÉ el proceso y solicitá intervención humana explicando el motivo puntual — nunca completes el asiento con datos supuestos.\n\nLímites (qué NO tenés permitido hacer):\n- No podés registrar, confirmar ni enviar asientos contables definitivos sin aprobación humana.\n- No podés inventar ni estimar cotizaciones si la herramienta falla.\n- No podés responder consultas ajenas al proceso de cierre contable de moneda extranjera.",
+          "maxIterations": 5
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1248,
+        -96
+      ],
+      "id": "1b69f64f-a4a8-4843-ba1f-6e93ff73d6d4",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.6-flash",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -1472,
+        144
+      ],
+      "id": "77fc2d0e-1190-407f-ad18-00a4555a3d7d",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "2Bmw7FQjnTFklccp",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -1152,
+        224
+      ],
+      "id": "627a9e85-31c7-403e-b95a-ce52346b05bf",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -1344,
+        368
+      ],
+      "id": "8cae11da-01cc-4f40-bb12-1bdeb26c6dc1",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "ECyQcmS2b7E6olLL",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "174f61b2-3c7c-40d2-aedb-5ce9fc4c68d6",
+              "name": "Resultado",
+              "value": "={{$json.output}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -880,
+        -96
+      ],
+      "id": "1c6a3d4b-58cb-472a-863d-16fd77c57d0a",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "aliettimartina@gmail.com",
+        "subject": "Cotización a utilizar en el cierre contable",
+        "message": "={{ $json.Resultado }}",
+        "options": {
+          "limitWaitTime": {
+            "values": {
+              "resumeAmount": 2,
+              "resumeUnit": "minutes"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -704,
+        -96
+      ],
+      "id": "9c4a5a0e-f5d2-405b-9e30-3bfb2047faee",
+      "name": "Send a message",
+      "webhookId": "60ee6391-2109-4bff-93c5-93db5b7b6617",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "04HYsGHGW4xfisVj",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Obtiene el listado de cotizaciones del dólar oficial BNA (comprador y vendedor) para el último día hábil de cada mes.\nUsar esta herramienta cada vez que el usuario solicite realizar o simular un cierre contable mensual y se necesite determinar el tipo de cambio oficial BNA aplicable a partidas en moneda extranjera. Devuelve compra (para valuar activos) y venta (para valuar pasivos) del último día hábil del mes indicado, conforme a RT 54. Debe usarse siempre antes de calcular cualquier valuación en moneda extranjera, sin excepción, y nunca debe sustituirse por una estimación propia del modelo.",
+        "jsCode": "try {\n  const cotizaciones = await this.helpers.httpRequest({\n    url: 'https://api.argentinadatos.com/v1/cotizaciones/dolares/oficial',\n    method: 'GET',\n    json: true\n  });\n\n  if (!Array.isArray(cotizaciones) || cotizaciones.length === 0) {\n    return JSON.stringify({\n      estado: \"ERROR\",\n      mensaje: \"La API de ArgentinaDatos no devolvió cotizaciones. Avisar al usuario antes de calcular el cierre.\"\n    });\n  }\n\n  const fechaObjetivo = (query.periodo || \"\").toString();\n\n  const cierresPorMes = {};\n  for (const item of cotizaciones) {\n    if (!item.fecha || item.compra === undefined || item.venta === undefined) continue;\n    const periodo = item.fecha.substring(0, 7); // AAAA-MM\n    cierresPorMes[periodo] = {\n      periodo: periodo,\n      fecha_cierre_habil: item.fecha,\n      compra: item.compra,\n      venta: item.venta\n    };\n  }\n\n  const periodoBuscado = fechaObjetivo.substring(0, 7);\n\n  if (periodoBuscado && cierresPorMes[periodoBuscado]) {\n    return JSON.stringify({\n      estado: \"OK\",\n      mensaje: `Cotización del último día hábil para el mes ${periodoBuscado}`,\n      cotizacion_aplicable: cierresPorMes[periodoBuscado]\n    });\n  }\n\n  const periodosDisponibles = Object.keys(cierresPorMes).sort();\n  const ultimoPeriodo = periodosDisponibles[periodosDisponibles.length - 1];\n\n  return JSON.stringify({\n    estado: \"ULTIMO_DISPONIBLE\",\n    mensaje: `No se encontró cotización exacta para ${fechaObjetivo}. Se utiliza la cotización del último día hábil registrado en el sistema (${cierresPorMes[ultimoPeriodo].fecha_cierre_habil}).`,\n    cotizacion_aplicable: cierresPorMes[ultimoPeriodo]\n  });\n\n} catch (error) {\n  return JSON.stringify({\n    estado: \"ERROR\",\n    mensaje: `Falló la consulta a ArgentinaDatos: ${error.message}`\n  });\n}",
+        "specifyInputSchema": true,
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"periodo\": {\n      \"type\": \"string\",\n      \"description\": \"Período contable a cerrar, en formato AAAA-MM (ej: 2026-06)\"\n    }\n  },\n  \"required\": [\"periodo\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        -944,
+        208
+      ],
+      "id": "08300df6-f746-489b-87ef-1aee7a30f9ff",
+      "name": "Code Tool_obtener_cotizaciones_cierre_bna"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        []
+      ]
+    },
+    "Code Tool_obtener_cotizaciones_cierre_bna": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "06619230-9453-4cdc-9b49-65065228a86d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bec84f51f202deb99f158d7744af7d791ae11529f8909a3ed0771a1ffb5f18f3"
+  },
+  "nodeGroups": [],
+  "id": "VsDpMElDRwi79Ckz",
+  "tags": []
+}

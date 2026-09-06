@@ -1,0 +1,647 @@
+{
+  "name": "Ingesta Sumas y Saldos - Email",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOrfdtwbc86Wtat",
+          "mode": "list",
+          "cachedResultName": "Untitled Base",
+          "cachedResultUrl": "https://airtable.com/appOrfdtwbc86Wtat"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblei99TvnCE65Vfh",
+          "mode": "list",
+          "cachedResultName": "Equipo_Autorizado",
+          "cachedResultUrl": "https://airtable.com/appOrfdtwbc86Wtat/tblei99TvnCE65Vfh"
+        },
+        "filterByFormula": "={Email} = '{{ $json.from.value[0].address }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        -96
+      ],
+      "id": "1397ddbf-d919-4a12-8adb-f70567aa13f2",
+      "name": "Search records_Buscar Remitente Autorizado",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "0h5MdPQnz4uJ6xT2",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "labelIds": [
+            "INBOX"
+          ]
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        -96
+      ],
+      "id": "a399fa79-a06f-40da-84e9-617b848a6ce9",
+      "name": "Gmail Trigger_Recepcion Sumas y Saldos",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "04HYsGHGW4xfisVj",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d33ea5c1-fb1a-46c8-b208-e0caba7b7e1d",
+              "leftValue": "={{ $json.airtable_encontrado }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "05ad8590-2f14-40eb-b342-0aeeb825d71a",
+              "leftValue": "={{ $json.subjectLower }}",
+              "rightValue": "/auto-?reply|out of office|undeliverable|no-?reply|revisar - cierre|cierre contable ok/i",
+              "operator": {
+                "type": "string",
+                "operation": "notRegex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        -96
+      ],
+      "id": "ee3dcfb9-0040-4eed-8797-98bbc457a647",
+      "name": "If_Remitente Autorizado"
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "binaryPropertyName": "attachment_0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        2192,
+        -96
+      ],
+      "id": "761dab58-cedf-421e-beed-2732c4fedfaf",
+      "name": "Extract from File_Extraer Sumas y Saldos"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $json, binary: $binary }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        -96
+      ],
+      "id": "bf34e228-18bc-4608-b610-4ff15c29af10",
+      "name": "Code in JavaScript_Restaurar Adjunto Original"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => ({\n  json: {\n    cuenta: item.json.Cuenta,\n    naturaleza: item.json.Naturaleza,\n    moneda: item.json.Moneda,\n    importe: Number(item.json.Importe) || 0,\n    debe: Number(item.json.Debe) || 0,\n    haber: Number(item.json.Haber) || 0\n  }\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2368,
+        -96
+      ],
+      "id": "6ad4e3b8-07a6-4a01-a044-fcb72b9ab8d7",
+      "name": "Code in JavaScript_Normalizar Sumas y Saldos"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "VsDpMElDRwi79Ckz",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/VsDpMElDRwi79Ckz",
+          "cachedResultName": "Manager_Proyecto Integrador"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatInput": "={{ $json.chatInput }}",
+            "action": "={{ $json.action }}",
+            "sessionId": "={{ $json.sessionId }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "chatInput",
+              "displayName": "chatInput",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "action",
+              "displayName": "action",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "sessionId",
+              "displayName": "sessionId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        3168,
+        -96
+      ],
+      "id": "f36ae107-e7f2-4d3c-8d3b-baa2734ac710",
+      "name": "Execute Workflow_Delegar al Manager de Cierres"
+    },
+    {
+      "parameters": {
+        "jsCode": "const cuentas = $input.all().map(item => item.json);\nconst gmailId = $('Code in JavaScript_Restaurar Adjunto Original').first().json.gmailId;\n\nlet mensaje = 'Cerrame las siguientes cuentas del período 2026-06:\\n';\nmensaje += cuentas.map(c =>\n  `- ${c.cuenta}: ${c.naturaleza.toLowerCase()}, moneda ${c.moneda}, importe ${c.importe}, debe ${c.debe}, haber ${c.haber}`\n).join('\\n');\n\nreturn [{\n  json: {\n    chatInput: mensaje,\n    action: 'sendMessage',\n    sessionId: 'ingesta-email-' + Date.now(),\n    gmailId: gmailId\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2560,
+        -96
+      ],
+      "id": "0bf53e04-7187-47b2-8c98-406c586c7827",
+      "name": "Code in JavaScript_Armar Mensaje Para Manager"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOrfdtwbc86Wtat",
+          "mode": "list",
+          "cachedResultName": "Untitled Base",
+          "cachedResultUrl": "https://airtable.com/appOrfdtwbc86Wtat"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblwLCrECtUiUzY1O",
+          "mode": "list",
+          "cachedResultName": "Mensajes_Procesados",
+          "cachedResultUrl": "https://airtable.com/appOrfdtwbc86Wtat/tblwLCrECtUiUzY1O"
+        },
+        "filterByFormula": "={Message_ID} = '{{ $json.gmailId }}'",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        -112
+      ],
+      "id": "9adf0d13-3f9f-4845-80c8-c07fe81325f0",
+      "name": "Search records_Buscar Mensaje Duplicado",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "0h5MdPQnz4uJ6xT2",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c304c985-8199-4d21-862d-4b713a6404ff",
+              "leftValue": "={{ $json.es_duplicado }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1776,
+        -112
+      ],
+      "id": "caedc059-72fc-4c54-af2d-4819ee370a56",
+      "name": "If_If_Mensaje Ya Procesado"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appOrfdtwbc86Wtat",
+          "mode": "list",
+          "cachedResultName": "Untitled Base",
+          "cachedResultUrl": "https://airtable.com/appOrfdtwbc86Wtat"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblwLCrECtUiUzY1O",
+          "mode": "list",
+          "cachedResultName": "Mensajes_Procesados",
+          "cachedResultUrl": "https://airtable.com/appOrfdtwbc86Wtat/tblwLCrECtUiUzY1O"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Message_ID": "={{ $json.gmailId }}",
+            "Fecha_Procesado": "={{ $now.toFormat('yyyy-MM-dd') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Message_ID",
+              "displayName": "Message_ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha_Procesado",
+              "displayName": "Fecha_Procesado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        2752,
+        -96
+      ],
+      "id": "2771a736-7328-45ed-b045-4078753f3187",
+      "name": "Create a record_Registrar Mensaje Procesado",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "0h5MdPQnz4uJ6xT2",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        224,
+        -96
+      ],
+      "id": "dcf57bae-ecfc-40db-bc6b-794d1ca8cdf2",
+      "name": "Loop Over Items_Loop Mensajes Uno por Uno"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { ...$json, subjectLower: ($json.subject || '').toLowerCase(), fromAddress: $json.from.value[0].address, gmailId: $json.id }, binary: $binary }]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -96
+      ],
+      "id": "38c5bbce-2145-4980-b568-d2451adbf848",
+      "name": "Code in JavaScript_Capturar Datos del Mail"
+    },
+    {
+      "parameters": {
+        "jsCode": "const airtableResult = $json;\nconst original = $('Code in JavaScript_Capturar Datos del Mail').item;\nconst encontrado = !!(airtableResult.fields && Object.keys(airtableResult.fields).length > 0);\n\nreturn [{\n  json: {\n    ...original.json,\n    airtable_encontrado: encontrado\n  },\n  binary: original.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -96
+      ],
+      "id": "3e87c2ad-db0b-42ce-bc60-0d03df53c1df",
+      "name": "Code in JavaScript_Reconstruir Datos del Mail"
+    },
+    {
+      "parameters": {
+        "jsCode": "const airtableResult = $json;\nconst original = $('Code in JavaScript_Capturar Datos del Mail').item;\nconst esDuplicado = !!(airtableResult.fields && Object.keys(airtableResult.fields).length > 0);\n\nreturn [{\n  json: {\n    ...original.json,\n    es_duplicado: esDuplicado\n  },\n  binary: original.binary\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        -112
+      ],
+      "id": "6bc256ea-a6d2-43eb-bc5e-647772803e16",
+      "name": "Code in JavaScript_Reconstruir Datos Tras Duplicados"
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Code in JavaScript_Armar Mensaje Para Manager').item;\nreturn [{ json: original.json }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2976,
+        -96
+      ],
+      "id": "d76d4af5-21ed-486c-a36c-c3dbfb2c15a1",
+      "name": "Code in JavaScript_Reconstruir Mensaje Final"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger_Recepcion Sumas y Saldos": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items_Loop Mensajes Uno por Uno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records_Buscar Remitente Autorizado": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript_Reconstruir Datos del Mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If_Remitente Autorizado": {
+      "main": [
+        [
+          {
+            "node": "Search records_Buscar Mensaje Duplicado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items_Loop Mensajes Uno por Uno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript_Restaurar Adjunto Original": {
+      "main": [
+        [
+          {
+            "node": "Extract from File_Extraer Sumas y Saldos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File_Extraer Sumas y Saldos": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript_Normalizar Sumas y Saldos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript_Normalizar Sumas y Saldos": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript_Armar Mensaje Para Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript_Armar Mensaje Para Manager": {
+      "main": [
+        [
+          {
+            "node": "Create a record_Registrar Mensaje Procesado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Workflow_Delegar al Manager de Cierres": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items_Loop Mensajes Uno por Uno",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records_Buscar Mensaje Duplicado": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript_Reconstruir Datos Tras Duplicados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If_If_Mensaje Ya Procesado": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items_Loop Mensajes Uno por Uno",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript_Restaurar Adjunto Original",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a record_Registrar Mensaje Procesado": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript_Reconstruir Mensaje Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items_Loop Mensajes Uno por Uno": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Code in JavaScript_Capturar Datos del Mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript_Capturar Datos del Mail": {
+      "main": [
+        [
+          {
+            "node": "Search records_Buscar Remitente Autorizado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript_Reconstruir Datos del Mail": {
+      "main": [
+        [
+          {
+            "node": "If_Remitente Autorizado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript_Reconstruir Datos Tras Duplicados": {
+      "main": [
+        [
+          {
+            "node": "If_If_Mensaje Ya Procesado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript_Reconstruir Mensaje Final": {
+      "main": [
+        [
+          {
+            "node": "Execute Workflow_Delegar al Manager de Cierres",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "4d998d08-1abc-40c4-89d8-2ab235c7892b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bec84f51f202deb99f158d7744af7d791ae11529f8909a3ed0771a1ffb5f18f3"
+  },
+  "nodeGroups": [],
+  "id": "9X9c2Ay3Exvtr7YU",
+  "tags": []
+}

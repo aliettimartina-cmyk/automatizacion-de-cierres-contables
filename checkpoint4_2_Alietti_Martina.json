@@ -1,0 +1,1292 @@
+{
+  "name": "Manager_Proyecto Integrador",
+  "nodes": [
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Code in JavaScript_Extraer Periodo del Mensaje').item.json.sessionId }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        -1952,
+        448
+      ],
+      "id": "627a9e85-31c7-403e-b95a-ce52346b05bf",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "399dc101-f353-464c-b5d7-44dc2b171e0b",
+              "name": "periodo",
+              "value": "={{$json.output.periodo}}",
+              "type": "string"
+            },
+            {
+              "id": "20115d69-d493-4544-8f8e-daf645c5c1be",
+              "name": "RequiereIntervencion",
+              "value": "={{ $json.output.requiere_intervencion_humana }}",
+              "type": "boolean"
+            },
+            {
+              "id": "dd9c5883-7355-481c-8dcd-2a6c44de2ca5",
+              "name": "Asunto",
+              "value": "={{ $json.output.requiere_intervencion_humana ? '⚠️ REVISAR - Cierre ' + $json.output.periodo : 'Cierre contable OK - ' + $json.output.periodo }}",
+              "type": "string"
+            },
+            {
+              "id": "1f74bb0f-7525-499a-9d60-4f23dd1c21d5",
+              "name": "Resultado",
+              "value": "={{ 'Cierre contable - Período: ' + $json.output.periodo + '\\n\\n' + $json.output.resumen_para_auditoria + '\\n\\nValidación de partida doble: ' + ($json.output.validacion_partida_doble.valida ? '✅ OK' : '❌ NO CIERRA') + ' (Debe: ' + $json.output.validacion_partida_doble.total_debe + ' / Haber: ' + $json.output.validacion_partida_doble.total_haber + ')\\n\\nDetalle por cuenta:\\n' + $json.output.cuentas_procesadas.map(c => '- ' + c.cuenta + ' (' + c.clasificacion + '): ARS ' + c.importe_valuado_ars + (c.cotizacion_aplicada ? ' [cotización ' + c.cotizacion_aplicada + ']' : '')).join('\\n') + ($json.output.requiere_intervencion_humana ? '\\n\\n⚠️ ATENCIÓN: requiere intervención humana. Cuentas con error: ' + JSON.stringify($json.output.cuentas_con_error) : '') }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -1344,
+        160
+      ],
+      "id": "1c6a3d4b-58cb-472a-863d-16fd77c57d0a",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-3.6-flash",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -2320,
+        432
+      ],
+      "id": "77fc2d0e-1190-407f-ad18-00a4555a3d7d",
+      "name": "Google Gemini Chat Model_Cerebro1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "2Bmw7FQjnTFklccp",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -2176,
+        448
+      ],
+      "id": "8cae11da-01cc-4f40-bb12-1bdeb26c6dc1",
+      "name": "Groq Chat Model_Cerebro2",
+      "credentials": {
+        "groqApi": {
+          "id": "ECyQcmS2b7E6olLL",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"periodo\": \"2026-06\",\n  \"cuentas_procesadas\": [\n    {\n      \"cuenta\": \"Caja en dólares\",\n      \"clasificacion\": \"activo_moneda_extranjera\",\n      \"sub_workflow_delegado\": \"tratamiento_activo_moneda_extranjera\",\n      \"importe_original\": 10000,\n      \"moneda\": \"USD\",\n      \"cotizacion_aplicada\": 1450.50,\n      \"importe_valuado_ars\": 14505000,\n      \"debe\": 14505000,\n      \"haber\": 0,\n      \"estado\": \"OK\"\n    },\n    {\n      \"cuenta\": \"Proveedores del exterior\",\n      \"clasificacion\": \"pasivo_moneda_extranjera\",\n      \"sub_workflow_delegado\": \"tratamiento_pasivo_moneda_extranjera\",\n      \"importe_original\": 5000,\n      \"moneda\": \"USD\",\n      \"cotizacion_aplicada\": 1460.00,\n      \"importe_valuado_ars\": 7300000,\n      \"debe\": 0,\n      \"haber\": 7300000,\n      \"estado\": \"OK\"\n    },\n    {\n      \"cuenta\": \"Caja en pesos\",\n      \"clasificacion\": \"activo_moneda_local\",\n      \"sub_workflow_delegado\": \"tratamiento_activo_moneda_local\",\n      \"importe_original\": 7205000,\n      \"moneda\": \"ARS\",\n      \"cotizacion_aplicada\": 0,\n      \"importe_valuado_ars\": 7205000,\n      \"debe\": 7205000,\n      \"haber\": 0,\n      \"estado\": \"OK\"\n    }\n  ],\n  \"validacion_partida_doble\": {\n    \"total_debe\": 21710000,\n    \"total_haber\": 21710000,\n    \"diferencia\": 0,\n    \"valida\": true\n  },\n  \"requiere_intervencion_humana\": false,\n  \"cuentas_con_error\": [\n    {\n      \"cuenta\": \"Ejemplo cuenta con error\",\n      \"error\": \"Descripción del motivo del error\"\n    }\n  ],\n  \"resumen_para_auditoria\": \"Cierre del período 2026-06 procesado: 3 cuentas clasificadas y delegadas correctamente, partida doble validada sin diferencias.\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -1216,
+        464
+      ],
+      "id": "68669661-eb61-4cc4-9ec8-5764c5cdb268",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "hasOutputParser": true,
+        "needsFallback": true,
+        "options": {
+          "systemMessage": "=Rol: Manager Contable Automatizado. Actuás como orquestador de un equipo de sub-agentes especializados en el cierre contable mensual de Noorden S.A. bajo la Resolución Técnica 54 de la FACPCE (Norma Unificada Argentina). Vos no calculás valuaciones directamente: tu trabajo es clasificar cada cuenta contable que recibís y delegar su tratamiento al sub-workflow correspondiente.\n\nÁmbito: Este agente opera exclusivamente sobre el proceso de cierre contable mensual de Noorden S.A. Cada cuenta que te llega debe clasificarse en una y solo una de estas cuatro categorías antes de delegar:\n- Activo en moneda local\n- Activo en moneda extranjera\n- Pasivo en moneda local\n- Pasivo en moneda extranjera\n\nObjetivo: Clasificar correctamente cada cuenta contable según su naturaleza (activo/pasivo) y su moneda (local/extranjera), delegar su tratamiento al sub-workflow especializado que corresponda, consolidar los resultados que te devuelven, validar la partida doble del cierre completo, y dejar registro auditable de todo el proceso.\n\nFecha actual del sistema: {{ $now.toFormat('yyyy-MM-dd') }}\n\nCriterio de Clasificación y Delegación:\n1. Para cada cuenta contable recibida, determiná primero si es Activo o Pasivo según su naturaleza contable, y luego si está expresada en moneda local (ARS) o moneda extranjera (USD u otra).\n2. Según la clasificación, delegá SIEMPRE la cuenta al sub-workflow correspondiente, pasándole todos los datos disponibles (cuenta, importe, Debe/Haber, moneda):\n   - Activo + moneda local → sub-workflow 'tratamiento_activo_moneda_local'\n   - Activo + moneda extranjera → sub-workflow 'tratamiento_activo_moneda_extranjera'\n   - Pasivo + moneda local → sub-workflow 'tratamiento_pasivo_moneda_local'\n   - Pasivo + moneda extranjera → sub-workflow 'tratamiento_pasivo_moneda_extranjera'\n3. Nunca calculés vos mismo una valuación en moneda extranjera ni asumas una cotización: esa lógica vive exclusivamente dentro de los sub-workflows de moneda extranjera.\n4. Nunca evalúes por tu cuenta si un período de cierre es \"futuro\" o \"no disponible\" basándote en tu conocimiento previo — eso también es responsabilidad de los sub-workflows que consultan cotizaciones.\n\nReglas y Escalamiento:\n1. Una vez que recibís las respuestas de los sub-workflows delegados, consolidá los resultados y validá la Partida Doble del cierre completo: sum(Debe) - sum(Haber) = 0.\n2. Si algún sub-workflow devuelve un estado de error, o si la clasificación de una cuenta es ambigua y no podés determinar con certeza su categoría, DETENÉ el proceso para esa cuenta puntual y solicitá intervención humana explicando el motivo — nunca la clasifiques \"a ojo\" ni la delegués al sub-workflow que te parezca más probable.\n3. Si la validación de partida doble del cierre consolidado no cierra, DETENÉ el proceso completo y solicitá intervención humana antes de dar el cierre por válido.\n\nLímites (qué NO tenés permitido hacer):\n- No podés calcular vos mismo una valuación de cuenta: esa tarea es exclusiva de los sub-workflows delegados.\n- No podés registrar, confirmar ni enviar asientos contables definitivos sin aprobación humana.\n- No podés clasificar una cuenta como local o extranjera, o como activo o pasivo, si la información recibida es insuficiente para determinarlo con certeza — en ese caso, escalá.\n- No podés responder consultas ajenas al proceso de clasificación y delegación del cierre contable.\n\n### CONFIGURACIÓN DE IDENTIDAD Y MEMORIA DE LARGO PLAZO ###\n{{ $json.bloqueMemoria }}\n### FIN DEL CONTEXTO COMPARTIDO ###",
+          "maxIterations": 5
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -1744,
+        160
+      ],
+      "id": "1b69f64f-a4a8-4843-ba1f-6e93ff73d6d4",
+      "name": "AI Agent_Delega Valuación de partidas"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -2096,
+        -224
+      ],
+      "id": "c6cbc331-d9a1-4b20-96fd-4e6a9cbfdd46",
+      "name": "When chat message received",
+      "webhookId": "5290fbd3-5b13-4161-8de1-02f0d2d5a98f"
+    },
+    {
+      "parameters": {
+        "description": "Usar esta herramienta para procesar cualquier cuenta contable clasificada como Activo en moneda local (pesos argentinos) durante el cierre mensual. No requiere conversión de moneda: devuelve el importe original tal cual, junto con debe/haber. Delegar siempre que una cuenta sea de naturaleza activo y ya esté expresada en pesos.",
+        "workflowId": {
+          "__rl": true,
+          "value": "bfzjU4oNlypo23Kb",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/bfzjU4oNlypo23Kb",
+          "cachedResultName": "Tratamiento - Activo Moneda Local"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "importe": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('importe', ``, 'number') }}",
+            "debe": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('debe', ``, 'number') }}",
+            "haber": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('haber', ``, 'number') }}",
+            "periodo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('periodo', ``, 'string') }}",
+            "cuenta": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('cuenta', ``, 'string') }}",
+            "moneda": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('moneda', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "periodo",
+              "displayName": "periodo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "cuenta",
+              "displayName": "cuenta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "importe",
+              "displayName": "importe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "moneda",
+              "displayName": "moneda",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "debe",
+              "displayName": "debe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "haber",
+              "displayName": "haber",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -1344,
+        608
+      ],
+      "id": "4b2a974c-ed14-430c-bd45-27740ce4730e",
+      "name": "Call n8n Workflow Tool_tratamiento_activo_moneda_local"
+    },
+    {
+      "parameters": {
+        "description": "Usar esta herramienta para valuar cualquier cuenta contable clasificada como Activo en moneda extranjera durante el cierre mensual. Recibe periodo, cuenta, importe, moneda, debe y haber, y devuelve el importe valuado en pesos argentinos aplicando el tipo de cambio comprador BNA del último día hábil del período, conforme a RT 54. Delegar siempre que una cuenta sea de naturaleza activo y esté expresada en moneda distinta al peso.",
+        "workflowId": {
+          "__rl": true,
+          "value": "Z4HqZ5VHElKZQo2P",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/Z4HqZ5VHElKZQo2P",
+          "cachedResultName": "Tratamiento - Activo Moneda Extranjera"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "importe": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('importe', ``, 'number') }}",
+            "debe": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('debe', ``, 'number') }}",
+            "haber": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('haber', ``, 'number') }}",
+            "periodo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('periodo', ``, 'string') }}",
+            "cuenta": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('cuenta', ``, 'string') }}",
+            "moneda": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('moneda', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "periodo",
+              "displayName": "periodo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "cuenta",
+              "displayName": "cuenta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "importe",
+              "displayName": "importe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "moneda",
+              "displayName": "moneda",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "debe",
+              "displayName": "debe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "haber",
+              "displayName": "haber",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -1472,
+        608
+      ],
+      "id": "8dfb8c2c-7cbc-450e-8585-c3729eaf8d7f",
+      "name": "Call n8n Workflow Tool_tratamiento_activo_moneda_extranjera"
+    },
+    {
+      "parameters": {
+        "description": "Usar esta herramienta para procesar cualquier cuenta contable clasificada como Pasivo en moneda local (pesos argentinos) durante el cierre mensual. No requiere conversión de moneda: devuelve el importe original tal cual, junto con debe/haber. Delegar siempre que una cuenta sea de naturaleza pasivo y ya esté expresada en pesos.",
+        "workflowId": {
+          "__rl": true,
+          "value": "QItoayzIDBSScCGG",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/QItoayzIDBSScCGG",
+          "cachedResultName": "Tratamiento - Pasivo Moneda Local"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "importe": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('importe', ``, 'number') }}",
+            "debe": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('debe', ``, 'number') }}",
+            "haber": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('haber', ``, 'number') }}",
+            "periodo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('periodo', ``, 'string') }}",
+            "cuenta": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('cuenta', ``, 'string') }}",
+            "moneda": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('moneda', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "periodo",
+              "displayName": "periodo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "cuenta",
+              "displayName": "cuenta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "importe",
+              "displayName": "importe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "moneda",
+              "displayName": "moneda",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "debe",
+              "displayName": "debe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "haber",
+              "displayName": "haber",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -1616,
+        608
+      ],
+      "id": "c2595f39-ddf3-40fe-b67a-801fd817c830",
+      "name": "Call n8n Workflow Tool_tratamiento_pasivo_moneda_local"
+    },
+    {
+      "parameters": {
+        "description": "Usar esta herramienta para valuar cualquier cuenta contable clasificada como Pasivo en moneda extranjera durante el cierre mensual. Recibe periodo, cuenta, importe, moneda, debe y haber, y devuelve el importe valuado en pesos argentinos aplicando el tipo de cambio vendedor BNA del último día hábil del período, conforme a RT 54. Delegar siempre que una cuenta sea de naturaleza pasivo y esté expresada en moneda distinta al peso.",
+        "workflowId": {
+          "__rl": true,
+          "value": "zLsBAS3Agaye0rw3",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/zLsBAS3Agaye0rw3",
+          "cachedResultName": "Tratamiento - Pasivo Moneda Extranjera"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "importe": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('importe', ``, 'number') }}",
+            "debe": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('debe', ``, 'number') }}",
+            "haber": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('haber', ``, 'number') }}",
+            "periodo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('periodo', ``, 'string') }}",
+            "cuenta": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('cuenta', ``, 'string') }}",
+            "moneda": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('moneda', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "periodo",
+              "displayName": "periodo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "cuenta",
+              "displayName": "cuenta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "importe",
+              "displayName": "importe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "moneda",
+              "displayName": "moneda",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "debe",
+              "displayName": "debe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "haber",
+              "displayName": "haber",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -1760,
+        592
+      ],
+      "id": "5898a77f-ec33-4127-a9a0-7d502b8fd08f",
+      "name": "Call n8n Workflow Tool_tratamiento_pasivo_moneda_extranjera"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appOrfdtwbc86Wtat",
+          "mode": "list",
+          "cachedResultName": "Untitled Base",
+          "cachedResultUrl": "https://airtable.com/appOrfdtwbc86Wtat"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblkHQPLPbVEwpqNR",
+          "mode": "list",
+          "cachedResultName": "Memoria Cierres Contables - Noorden",
+          "cachedResultUrl": "https://airtable.com/appOrfdtwbc86Wtat/tblkHQPLPbVEwpqNR"
+        },
+        "filterByFormula": "={Session_ID} = '{{ $json.periodo }}'",
+        "options": {},
+        "sort": {
+          "property": []
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -1664,
+        -96
+      ],
+      "id": "93c3567c-634a-4ff7-a1cd-dfba83861299",
+      "name": "Search records",
+      "alwaysOutputData": true,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "0h5MdPQnz4uJ6xT2",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const original = $('Code in JavaScript_Extraer Periodo del Mensaje').first().json;\nconst airtableResult = $input.first().json;\nconst encontrado = !!(airtableResult.fields && airtableResult.fields.Session_ID);\n\nconst bloqueMemoria = encontrado\n  ? 'Período consultado: ' + original.periodo + '. Estado del último cierre registrado para este período: ' + airtableResult.fields.Estado_Del_Caso + '. Resumen de la última ejecución: ' + airtableResult.fields.Resumen_Consolidado + '. Datos clave: ' + airtableResult.fields.Datos_Clave\n  : 'No hay registro previo de memoria para este período — es la primera vez que se procesa.';\n\nreturn [{\n  json: {\n    chatInput: original.chatInput,\n    action: original.action,\n    sessionId: original.sessionId,\n    periodo: original.periodo,\n    airtable_encontrado: encontrado,\n    Session_ID: encontrado ? airtableResult.fields.Session_ID : null,\n    Resumen_Consolidado: encontrado ? airtableResult.fields.Resumen_Consolidado : null,\n    Estado_Del_Caso: encontrado ? airtableResult.fields.Estado_Del_Caso : null,\n    Datos_Clave: encontrado ? airtableResult.fields.Datos_Clave : null,\n    bloqueMemoria: bloqueMemoria\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1504,
+        -96
+      ],
+      "id": "e601da12-3714-430f-9e49-e9cc003f3be0",
+      "name": "Code in JavaScript_Reconstruir contexto"
+    },
+    {
+      "parameters": {
+        "jsCode": "const texto = $input.first().json.chatInput || '';\nlet periodo = null;\n\n// Formato AAAA-MM directo (ej: 2026-06)\nconst matchISO = texto.match(/\\b(\\d{4})-(\\d{2})\\b/);\nif (matchISO) {\n  periodo = matchISO[0];\n} else {\n  // Formato DD/MM/AAAA (ej: 30/06/2026) -> normalizar a AAAA-MM\n  const matchDMY = texto.match(/\\b(\\d{2})\\/(\\d{2})\\/(\\d{4})\\b/);\n  if (matchDMY) {\n    const [, , mm, yyyy] = matchDMY;\n    periodo = `${yyyy}-${mm}`;\n  }\n}\n\nreturn [{ json: { ...$input.first().json, periodo } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1856,
+        -96
+      ],
+      "id": "26c7a8ce-dce3-4bfa-b929-489f3bfc38dc",
+      "name": "Code in JavaScript_Extraer Periodo del Mensaje"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bc36596d-374f-4464-8daa-9727fc504104",
+              "leftValue": "={{ $json.airtable_encontrado }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1344,
+        -96
+      ],
+      "id": "52363219-5908-409d-a204-121d87d017cf",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1.1,
+      "position": [
+        -976,
+        624
+      ],
+      "id": "5d6a8e7c-8c59-4a3e-8162-645f543df2d8",
+      "name": "Chat Memory Manager"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nreturn [{\n  json: {\n    cantidad_mensajes: Number(data.messagesCount),\n    periodo: $('Code in JavaScript_Extraer Periodo del Mensaje').first().json.periodo\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        624
+      ],
+      "id": "b3ca7987-e740-4a41-ba56-5794e1dc6f2f",
+      "name": "Code in JavaScript_Contar Mensajes"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5723f6a4-7733-4cf7-ab90-0459eb8a41e5",
+              "leftValue": "={{ $json.cantidad_mensajes }}",
+              "rightValue": 5,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -480,
+        624
+      ],
+      "id": "58a547c8-8c3c-4271-8ee1-17bfed3b8c1a",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ 'Analizá el siguiente historial de conversación (las fechas ya fueron normalizadas a formato AAAA-MM) y generá el resumen técnico:\\n\\n' + $json.historialNormalizado }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "Rol: Analista de Auditoría Técnica. Tu única tarea es leer el historial de una conversación de cierre contable y extraer un resumen técnico preciso, nunca genérico.\n\nObjetivo: Identificar exactamente qué períodos contables se consultaron, qué cuentas (si las hubo) generaron errores o requirieron intervención humana, y qué acción queda pendiente para continuar el proceso.\n\nReglas estrictas:\n1. Nunca generalices. Prohibido usar frases como \"se habló de temas contables\" o \"el usuario hizo consultas\" — cada punto clave tiene que nombrar el período y/o la cuenta específica involucrada.\n2. Nunca inventes un período, cuenta o cifra que no esté explícitamente en el historial de la conversación.\n3. Si el historial no menciona ninguna cuenta con problema, dejá el campo puntos_clave con un único ítem que indique explícitamente que no hubo cuentas con error, no lo dejes vacío ni inventes contenido.\n4. El campo accion_requerida tiene que ser una instrucción concreta y ejecutable (ej: \"Solicitar el detalle de la cuenta X\", no \"revisar la situación\").\n\nFormato de salida: Respondé ÚNICAMENTE en el formato JSON estructurado indicado — sin texto adicional antes o después."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -288,
+        720
+      ],
+      "id": "72033dec-f98b-49b2-b559-2ed8ad6a4726",
+      "name": "AI Agent_Resumen Tecnico"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-oss-20b",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        896
+      ],
+      "id": "98c73120-c0ee-4c34-9b64-b3c5ec79e94e",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "ECyQcmS2b7E6olLL",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"asunto_principal\": \"Cierre contable período 2026-06 — pendiente de datos\",\n  \"puntos_clave\": [\n    {\n      \"periodo_consultado\": \"2026-06\",\n      \"cuenta_afectada\": \"Proveedores del exterior\",\n      \"detalle\": \"Delegación falló: sub-workflow tratamiento_pasivo_moneda_extranjera reportó estado ERROR por falta de publicación\"\n    },\n    {\n      \"periodo_consultado\": \"2026-06\",\n      \"cuenta_afectada\": \"No aplica\",\n      \"detalle\": \"Se solicitó el cierre 4 veces sin que el usuario proporcionara el detalle de cuentas contables\"\n    }\n  ],\n  \"accion_requerida\": \"Solicitar al usuario el listado completo de cuentas (nombre, importe, moneda, debe/haber) para el período 2026-06 antes de reintentar el cierre\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        -144,
+        896
+      ],
+      "id": "c634a7aa-3a18-4ab0-87a1-a7ef1beeae8d",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const messages = $('Chat Memory Manager').first().json.messages;\nlet historialTexto = JSON.stringify(messages);\n\n// Normaliza cualquier fecha DD/MM/AAAA a AAAA-MM antes de que el agente la lea\nhistorialTexto = historialTexto.replace(/(\\d{2})\\/(\\d{2})\\/(\\d{4})/g, (match, dd, mm, yyyy) => `${yyyy}-${mm}`);\n\nreturn [{ json: { historialNormalizado: historialTexto } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        480
+      ],
+      "id": "38e9e3e2-38a0-4b20-998b-b75485cd62ea",
+      "name": "Code in JavaScript_Normalizar Historial"
+    },
+    {
+      "parameters": {
+        "jsCode": "const editFields = $('Edit Fields').first().json;\nconst periodo = editFields.periodo;\nconst requiereIntervencion = editFields.RequiereIntervencion;\n\nlet resumenTecnico = null;\ntry {\n  resumenTecnico = $('AI Agent_Resumen Tecnico').first().json.output;\n} catch (e) {\n  resumenTecnico = null;\n}\n\nconst resumenConsolidado = resumenTecnico\n  ? resumenTecnico.asunto_principal + ' | Acción requerida: ' + resumenTecnico.accion_requerida\n  : editFields.Resultado;\n\nconst estadoDelCaso = requiereIntervencion ? 'Requiere intervención' : 'Cerrado OK';\n\nreturn [{\n  json: {\n    Session_ID: periodo,\n    Fecha_Actualizacion: new Date().toISOString().split('T')[0],\n    Resumen_Consolidado: resumenConsolidado,\n    Estado_Del_Caso: estadoDelCaso,\n    Datos_Clave: resumenTecnico ? JSON.stringify(resumenTecnico.puntos_clave) : 'Sin resumen técnico generado — conversación corta (5 mensajes o menos)'\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        640
+      ],
+      "id": "8cc98d59-3ade-45e4-a485-8d9559a54fb5",
+      "name": "Code in JavaScript_Preparar Datos Finales"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appOrfdtwbc86Wtat",
+          "mode": "list",
+          "cachedResultName": "Untitled Base",
+          "cachedResultUrl": "https://airtable.com/appOrfdtwbc86Wtat"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblkHQPLPbVEwpqNR",
+          "mode": "list",
+          "cachedResultName": "Memoria Cierres Contables - Noorden",
+          "cachedResultUrl": "https://airtable.com/appOrfdtwbc86Wtat/tblkHQPLPbVEwpqNR"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "Session_ID"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Session_ID",
+              "displayName": "Session_ID",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fecha_Actualizacion",
+              "displayName": "Fecha_Actualizacion",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Resumen_Consolidado",
+              "displayName": "Resumen_Consolidado",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Estado_Del_Caso",
+              "displayName": "Estado_Del_Caso",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Cerrado OK",
+                  "value": "Cerrado OK"
+                },
+                {
+                  "name": "Cerrado con observaciones",
+                  "value": "Cerrado con observaciones"
+                },
+                {
+                  "name": "Requiere intervención",
+                  "value": "Requiere intervención"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Datos_Clave",
+              "displayName": "Datos_Clave",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        256,
+        640
+      ],
+      "id": "24dae47d-c64a-4701-bac5-876e6366ddf1",
+      "name": "Create or update a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "0h5MdPQnz4uJ6xT2",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "chatInput"
+            },
+            {
+              "name": "action"
+            },
+            {
+              "name": "sessionId"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2096,
+        0
+      ],
+      "id": "f8d9829d-106a-4ee0-b5c4-5ba70de03a9c",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.Asunto }}",
+        "message": "={{ $json.Resultado }}",
+        "options": {
+          "sendTo": ""
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1056,
+        80
+      ],
+      "id": "9c4a5a0e-f5d2-405b-9e30-3bfb2047faee",
+      "name": "Crear Borrador Auditoria",
+      "webhookId": "60ee6391-2109-4bff-93c5-93db5b7b6617",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "04HYsGHGW4xfisVj",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "createFromText",
+        "content": "={{ $json.Resultado }}",
+        "name": "={{ 'Cierre_' + $json.periodo + '.txt' }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1cW2_5f07h2NqSdzBq-ythzy57-TZeorO",
+          "mode": "list",
+          "cachedResultName": "Cierres Contables_Noorden IA",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1cW2_5f07h2NqSdzBq-ythzy57-TZeorO"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -1056,
+        256
+      ],
+      "id": "e884ddb8-3278-43fb-a334-f194d7b72e67",
+      "name": "Create file from text_Archivar Cierre en Drive",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "JhFufO0MbxolVx4b",
+          "name": "Google Drive account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent_Delega Valuación de partidas",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Chat Memory Manager",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Crear Borrador Auditoria",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Chat Memory Manager",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create file from text_Archivar Cierre en Drive",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model_Cerebro1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent_Delega Valuación de partidas",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model_Cerebro2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent_Delega Valuación de partidas",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent_Delega Valuación de partidas",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent_Delega Valuación de partidas": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript_Extraer Periodo del Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call n8n Workflow Tool_tratamiento_activo_moneda_local": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent_Delega Valuación de partidas",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call n8n Workflow Tool_tratamiento_activo_moneda_extranjera": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent_Delega Valuación de partidas",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call n8n Workflow Tool_tratamiento_pasivo_moneda_local": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent_Delega Valuación de partidas",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call n8n Workflow Tool_tratamiento_pasivo_moneda_extranjera": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent_Delega Valuación de partidas",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript_Reconstruir contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript_Reconstruir contexto": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript_Extraer Periodo del Mensaje": {
+      "main": [
+        [
+          {
+            "node": "Search records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "AI Agent_Delega Valuación de partidas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent_Delega Valuación de partidas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Memory Manager": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript_Contar Mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript_Contar Mensajes": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript_Normalizar Historial",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript_Preparar Datos Finales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent_Resumen Tecnico",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent_Resumen Tecnico",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript_Normalizar Historial": {
+      "main": [
+        [
+          {
+            "node": "AI Agent_Resumen Tecnico",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent_Resumen Tecnico": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript_Preparar Datos Finales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript_Preparar Datos Finales": {
+      "main": [
+        [
+          {
+            "node": "Create or update a record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript_Extraer Periodo del Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crear Borrador Auditoria": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "de2fb2d9-eca6-4dfd-8aff-a453eeedb191",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bec84f51f202deb99f158d7744af7d791ae11529f8909a3ed0771a1ffb5f18f3"
+  },
+  "nodeGroups": [],
+  "id": "VsDpMElDRwi79Ckz",
+  "tags": []
+}
